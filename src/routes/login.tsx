@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import logo from "@/assets/logo-avance.webp";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -28,11 +29,13 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-accent px-4">
+    <div className="flex min-h-screen items-center justify-center bg-brand-black px-4">
       <div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-xl">
-        <Link to="/" className="text-xs font-semibold uppercase tracking-widest text-primary">Avance Modas</Link>
-        <h1 className="mt-2 text-2xl font-bold">Entrar no Portal</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Use o email e senha que recebeu da equipe.</p>
+        <Link to="/" className="block">
+          <img src={logo} alt="Avance Modas" className="mx-auto h-14 w-auto" />
+        </Link>
+        <h1 className="mt-6 text-center text-2xl font-bold">Entrar no Portal</h1>
+        <p className="mt-1 text-center text-sm text-muted-foreground">Use o email e senha que recebeu da equipe.</p>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>

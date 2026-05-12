@@ -41,10 +41,11 @@ function SetupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-accent px-4">
+    <div className="flex min-h-screen items-center justify-center bg-brand-black px-4">
       <div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-xl">
-        <h1 className="text-2xl font-bold">Configuracao Inicial</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <img src={logo} alt="Avance Modas" className="mx-auto h-14 w-auto" />
+        <h1 className="mt-6 text-center text-2xl font-bold">Configuracao Inicial</h1>
+        <p className="mt-1 text-center text-sm text-muted-foreground">
           Crie a primeira conta de administrador. Esta pagina so funciona uma vez.
         </p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">

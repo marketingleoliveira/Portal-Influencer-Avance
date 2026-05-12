@@ -12,6 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PainelIndexRouteImport } from './routes/painel/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as PainelNovoRouteImport } from './routes/painel/novo'
+import { Route as AdminInfluencersRouteImport } from './routes/admin/influencers'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -28,35 +32,93 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PainelIndexRoute = PainelIndexRouteImport.update({
+  id: '/painel/',
+  path: '/painel/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelNovoRoute = PainelNovoRouteImport.update({
+  id: '/painel/novo',
+  path: '/painel/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminInfluencersRoute = AdminInfluencersRouteImport.update({
+  id: '/admin/influencers',
+  path: '/admin/influencers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/admin/influencers': typeof AdminInfluencersRoute
+  '/painel/novo': typeof PainelNovoRoute
+  '/admin/': typeof AdminIndexRoute
+  '/painel/': typeof PainelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/admin/influencers': typeof AdminInfluencersRoute
+  '/painel/novo': typeof PainelNovoRoute
+  '/admin': typeof AdminIndexRoute
+  '/painel': typeof PainelIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/admin/influencers': typeof AdminInfluencersRoute
+  '/painel/novo': typeof PainelNovoRoute
+  '/admin/': typeof AdminIndexRoute
+  '/painel/': typeof PainelIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/setup'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/admin/influencers'
+    | '/painel/novo'
+    | '/admin/'
+    | '/painel/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/setup'
-  id: '__root__' | '/' | '/login' | '/setup'
+  to:
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/admin/influencers'
+    | '/painel/novo'
+    | '/admin'
+    | '/painel'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/admin/influencers'
+    | '/painel/novo'
+    | '/admin/'
+    | '/painel/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   SetupRoute: typeof SetupRoute
+  AdminInfluencersRoute: typeof AdminInfluencersRoute
+  PainelNovoRoute: typeof PainelNovoRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  PainelIndexRoute: typeof PainelIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +144,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/painel/': {
+      id: '/painel/'
+      path: '/painel'
+      fullPath: '/painel/'
+      preLoaderRoute: typeof PainelIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel/novo': {
+      id: '/painel/novo'
+      path: '/painel/novo'
+      fullPath: '/painel/novo'
+      preLoaderRoute: typeof PainelNovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/influencers': {
+      id: '/admin/influencers'
+      path: '/admin/influencers'
+      fullPath: '/admin/influencers'
+      preLoaderRoute: typeof AdminInfluencersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,7 +179,21 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   SetupRoute: SetupRoute,
+  AdminInfluencersRoute: AdminInfluencersRoute,
+  PainelNovoRoute: PainelNovoRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  PainelIndexRoute: PainelIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

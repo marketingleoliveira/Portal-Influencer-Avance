@@ -26,22 +26,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(null);
       return;
     }
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    if (error) {
+      console.error("Erro ao carregar perfil do usuário", error);
+      setRole(null);
+      return;
+    }
     if (data?.some((r) => r.role === "admin")) setRole("admin");
     else if (data?.some((r) => r.role === "influencer")) setRole("influencer");
     else setRole(null);
   };
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const applySession = (s: Session | null) => {
+      setLoading(true);
       setSession(s);
       setUser(s?.user ?? null);
-      setTimeout(() => loadRole(s?.user?.id), 0);
+      void loadRole(s?.user?.id).finally(() => setLoading(false));
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      applySession(s);
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      loadRole(session?.user?.id).finally(() => setLoading(false));
+      applySession(session);
     });
     return () => sub.subscription.unsubscribe();
   }, []);

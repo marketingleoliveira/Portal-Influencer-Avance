@@ -18,6 +18,6 @@ export function RequireRole({ role, children }: { role: "admin" | "influencer"; 
     );
   }
   if (!user) return <Navigate to="/login" />;
-  if (r && r !== role) return <Navigate to="/" />;
+  if (r !== role) return <Navigate to="/" />;
   return <>{children}</>;
 }

@@ -36,6 +36,19 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <footer className="border-t bg-card mt-auto">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">
+            © Avance Modas
+          </span>
+          <Link
+            to="/admin"
+            className="text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
+          >
+            Painel Admin
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

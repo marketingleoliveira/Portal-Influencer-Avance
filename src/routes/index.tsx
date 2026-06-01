@@ -47,18 +47,12 @@ function Index() {
           redes sociais.
         </p>
 
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <div className="mt-10 flex justify-center">
           <Link
             to="/login"
             className="rounded-md bg-primary px-8 py-3 text-sm font-semibold uppercase tracking-wider text-primary-foreground shadow-sm transition hover:opacity-90"
           >
             Acessar minha conta
-          </Link>
-          <Link
-            to="/setup"
-            className="rounded-md border border-brand-black bg-card px-8 py-3 text-sm font-semibold uppercase tracking-wider text-foreground transition hover:bg-brand-black hover:text-brand-black-foreground"
-          >
-            Configurar admin
           </Link>
         </div>
       </section>

@@ -65,8 +65,18 @@ function Index() {
         </div>
       </section>
 
-      <footer className="bg-brand-black py-8 text-center text-xs uppercase tracking-[0.3em] text-brand-black-foreground/70">
-        Avance Modas · Acesso restrito
+      <footer className="bg-brand-black py-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row">
+          <span className="text-xs uppercase tracking-[0.3em] text-brand-black-foreground/70">
+            Avance Modas · Acesso restrito
+          </span>
+          <Link
+            to="/admin"
+            className="text-xs font-semibold uppercase tracking-wide text-brand-black-foreground/80 transition hover:text-primary"
+          >
+            Painel Admin
+          </Link>
+        </div>
       </footer>
     </div>
   );

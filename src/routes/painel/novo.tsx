@@ -7,7 +7,13 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Tag, Image as ImageIcon, Video, X } from "lucide-react";
 
@@ -17,11 +23,20 @@ export const Route = createFileRoute("/painel/novo")({
 
 type Kind = "etiqueta" | "foto" | "video";
 
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+const ADMINS = ["Leonardo", "Gabriela"];
+const REDES = ["Instagram", "TikTok"];
+
 function NovoEnvio() {
   const { user } = useAuth();
   const nav = useNavigate();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [mesRecebimento, setMesRecebimento] = useState("");
+  const [contato, setContato] = useState("");
+  const [redeSocial, setRedeSocial] = useState("");
+  const [linkPostagem, setLinkPostagem] = useState("");
   const [files, setFiles] = useState<{ file: File; kind: Kind }[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -34,12 +49,21 @@ function NovoEnvio() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (files.length === 0) {
-      toast.error("Anexe pelo menos um arquivo.");
-      return;
-    }
+    if (!mesRecebimento) { toast.error("Selecione o mês de recebimento."); return; }
+    if (!contato) { toast.error("Selecione o administrador responsável pelo contato."); return; }
+    if (!redeSocial) { toast.error("Selecione a rede social onde publicou."); return; }
+    if (!linkPostagem.trim()) { toast.error("Informe o link da postagem."); return; }
+    if (files.length === 0) { toast.error("Anexe pelo menos um arquivo."); return; }
+
     setBusy(true);
     try {
+      const title = `Recebimento - ${mesRecebimento}`;
+      const description = [
+        `Contato de envio: ${contato}`,
+        `Rede social: ${redeSocial}`,
+        `Link(s) da postagem: ${linkPostagem.trim()}`,
+      ].join("\n");
+
       const { data: sub, error: sErr } = await supabase
         .from("submissions")
         .insert({ influencer_id: user.id, title, description })
@@ -75,16 +99,50 @@ function NovoEnvio() {
       <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-6 rounded-2xl border bg-card p-6 shadow-sm">
         <div>
           <h1 className="text-xl font-bold">Novo envio</h1>
-          <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem e o conteudo produzido com as pecas.</p>
+          <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem e o conteúdo produzido com as peças.</p>
         </div>
 
         <div>
-          <Label htmlFor="t">Titulo</Label>
-          <Input id="t" required maxLength={120} placeholder="Ex: Look verao - Vestido floral" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Label htmlFor="mes">Mês de recebimento da peça</Label>
+          <Select value={mesRecebimento} onValueChange={setMesRecebimento}>
+            <SelectTrigger id="mes"><SelectValue placeholder="Selecione o mês" /></SelectTrigger>
+            <SelectContent>
+              {MESES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
+
         <div>
-          <Label htmlFor="d">Descricao (opcional)</Label>
-          <Textarea id="d" rows={3} placeholder="Detalhes do conteudo, pecas usadas, observacoes..." value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Label htmlFor="contato">Quem fez o contato de envio?</Label>
+          <Select value={contato} onValueChange={setContato}>
+            <SelectTrigger id="contato"><SelectValue placeholder="Selecione o administrador" /></SelectTrigger>
+            <SelectContent>
+              {ADMINS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="rede">Rede social onde publicou</Label>
+            <Select value={redeSocial} onValueChange={setRedeSocial}>
+              <SelectTrigger id="rede"><SelectValue placeholder="Selecione a rede" /></SelectTrigger>
+              <SelectContent>
+                {REDES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="link">Link da(s) postagem(ns)</Label>
+            <Input
+              id="link"
+              type="url"
+              placeholder="https://..."
+              value={linkPostagem}
+              onChange={(e) => setLinkPostagem(e.target.value)}
+              maxLength={1000}
+            />
+          </div>
         </div>
 
         <FileSection
@@ -96,19 +154,17 @@ function NovoEnvio() {
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
         />
         <FileSection
-          title="Fotos com as pecas"
+          title="Fotos com as peças"
           icon={<ImageIcon className="h-4 w-4" />}
           accept="image/*"
-          multiple
           files={grouped("foto")}
           onAdd={(l) => addFiles("foto", l)}
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
         />
         <FileSection
-          title="Videos"
+          title="Vídeos"
           icon={<Video className="h-4 w-4" />}
           accept="video/*"
-          multiple
           files={grouped("video")}
           onAdd={(l) => addFiles("video", l)}
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
@@ -124,20 +180,25 @@ function NovoEnvio() {
 }
 
 function FileSection({
-  title, icon, accept, multiple, files, onAdd, onRemove,
+  title, icon, accept, files, onAdd, onRemove,
 }: {
   title: string;
   icon: React.ReactNode;
   accept: string;
-  multiple?: boolean;
   files: { file: File; kind: Kind; i: number }[];
   onAdd: (l: FileList | null) => void;
   onRemove: (i: number) => void;
 }) {
   return (
     <div className="rounded-lg border bg-background p-4">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold">{icon}{title}</div>
-      <Input type="file" accept={accept} multiple={multiple} onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }} />
+      <div className="mb-1 flex items-center gap-2 text-sm font-semibold">{icon}{title}</div>
+      <p className="mb-3 text-xs text-muted-foreground">Você pode selecionar vários arquivos de uma vez.</p>
+      <Input
+        type="file"
+        accept={accept}
+        multiple
+        onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }}
+      />
       {files.length > 0 && (
         <ul className="mt-3 space-y-1 text-sm">
           {files.map((f) => (

@@ -158,11 +158,15 @@ function AdminHome() {
         )}
       </div>
 
-      {loading ? (
+      {!selectedId ? (
+        <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
+          Selecione uma influencer acima para ver os envios.
+        </div>
+      ) : loading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : filteredSubs.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
-          {subs.length === 0 ? "Nenhum envio ainda." : "Nenhum envio corresponde ao filtro."}
+          Esta influencer ainda não enviou nada.
         </div>
       ) : (
         <div className="space-y-4">
@@ -192,9 +196,9 @@ function AdminHome() {
 
                 {s.description && <p className="mt-3 text-sm text-foreground">{s.description}</p>}
 
-                <FileGrid title="Etiquetas" icon={<Tag className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "etiqueta")} onOpen={open} />
-                <FileGrid title="Fotos" icon={<ImageIcon className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "foto")} onOpen={open} />
-                <FileGrid title="Videos" icon={<Video className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "video")} onOpen={open} isVideo />
+                <FileGrid title="Etiquetas" icon={<Tag className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "etiqueta")} sign={sign} />
+                <FileGrid title="Fotos" icon={<ImageIcon className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "foto")} sign={sign} />
+                <FileGrid title="Videos" icon={<Video className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "video")} sign={sign} isVideo />
               </article>
             );
           })}
@@ -204,38 +208,77 @@ function AdminHome() {
   );
 }
 
-
 function FileGrid({
-  title, icon, files, onOpen, isVideo,
+  title, icon, files, sign, isVideo,
 }: {
   title: string;
   icon: React.ReactNode;
   files: { id: string; file_path: string; mime_type: string | null }[];
-  onOpen: (p: string) => void;
+  sign: (args: { data: { path: string } }) => Promise<{ url: string | null; error: string | null }>;
   isVideo?: boolean;
 }) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        files.map(async (f) => {
+          if (urls[f.id]) return [f.id, urls[f.id]] as const;
+          const r = await sign({ data: { path: f.file_path } });
+          return [f.id, r.url ?? ""] as const;
+        }),
+      );
+      if (!cancelled) {
+        const map: Record<string, string> = {};
+        entries.forEach(([id, u]) => { if (u) map[id] = u; });
+        setUrls((prev) => ({ ...prev, ...map }));
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files.map((f) => f.id).join(",")]);
+
   if (files.length === 0) return null;
   return (
     <section className="mt-5">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">{icon}{title} ({files.length})</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {files.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => onOpen(f.file_path)}
-            className="group relative aspect-square overflow-hidden rounded-lg border bg-muted text-left"
-          >
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-              {isVideo ? <Video className="h-8 w-8" /> : <ImageIcon className="h-8 w-8" />}
-            </div>
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/60 px-2 py-1.5 text-xs text-white opacity-0 transition group-hover:opacity-100">
-              <span className="truncate">{f.file_path.split("/").pop()}</span>
-              <span className="flex items-center gap-1"><Download className="h-3 w-3" /><ExternalLink className="h-3 w-3" /></span>
-            </div>
-          </button>
-        ))}
+        {files.map((f) => {
+          const url = urls[f.id];
+          return (
+            <a
+              key={f.id}
+              href={url || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative block aspect-square overflow-hidden rounded-lg border bg-muted"
+            >
+              {url ? (
+                isVideo ? (
+                  <video src={url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                ) : (
+                  <img src={url} alt={f.file_path.split("/").pop()} className="h-full w-full object-cover" loading="lazy" />
+                )
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                  {isVideo ? <Video className="h-8 w-8" /> : <ImageIcon className="h-8 w-8" />}
+                </div>
+              )}
+              {isVideo && url && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="rounded-full bg-black/60 p-2"><Video className="h-5 w-5 text-white" /></div>
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/60 px-2 py-1.5 text-xs text-white opacity-0 transition group-hover:opacity-100">
+                <span className="truncate">{f.file_path.split("/").pop()}</span>
+                <span className="flex items-center gap-1"><Download className="h-3 w-3" /><ExternalLink className="h-3 w-3" /></span>
+              </div>
+            </a>
+          );
+        })}
       </div>
     </section>
   );
 }
+

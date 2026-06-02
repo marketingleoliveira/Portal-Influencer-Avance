@@ -92,7 +92,19 @@ function AdminHome() {
       );
     });
   }, [subs, profiles, search, selectedId]);
+  const open = async (path: string) => {
+    const r = await sign({ data: { path } });
+    if (r.url) window.open(r.url, "_blank");
+    else toast.error(r.error ?? "Erro");
+  };
 
+  const setStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from("submissions").update({ status }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Atualizado"); refresh(); }
+  };
+
+  const selectedInf = selectedId ? influencers.find((i) => i.id === selectedId) : null;
 
   return (
     <AppShell title="Painel Administrativo">
@@ -101,18 +113,60 @@ function AdminHome() {
           <h1 className="text-2xl font-bold">Envios das influencers</h1>
           <p className="text-sm text-muted-foreground">Visualize, baixe e marque como publicado.</p>
         </div>
-        <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Influencers</Button></Link>
+        <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Gerenciar Influencers</Button></Link>
+      </div>
+
+      <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="relative mb-3">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Pesquisar por nome, @instagram ou e-mail..."
+            className="pl-9"
+          />
+        </div>
+        {loading ? (
+          <p className="px-1 py-2 text-sm text-muted-foreground">Carregando influencers...</p>
+        ) : filteredInfluencers.length === 0 ? (
+          <p className="px-1 py-2 text-sm text-muted-foreground">Nenhuma influencer encontrada.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {filteredInfluencers.map((i) => {
+              const active = selectedId === i.id;
+              const count = submissionsCount[i.id] ?? 0;
+              return (
+                <button
+                  key={i.id}
+                  type="button"
+                  onClick={() => setSelectedId(active ? null : i.id)}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/40"}`}
+                >
+                  <span className="font-medium">{i.full_name ?? i.email}</span>
+                  {i.instagram_handle && <span className={active ? "opacity-80" : "text-muted-foreground"}>@{i.instagram_handle}</span>}
+                  <Badge variant={active ? "secondary" : "outline"} className="ml-1">{count}</Badge>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {selectedInf && (
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+            <span>Mostrando envios de <strong>{selectedInf.full_name ?? selectedInf.email}</strong></span>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedId(null)}><X className="mr-1 h-3 w-3" /> Limpar</Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
-      ) : subs.length === 0 ? (
+      ) : filteredSubs.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
-          Nenhum envio ainda.
+          {subs.length === 0 ? "Nenhum envio ainda." : "Nenhum envio corresponde ao filtro."}
         </div>
       ) : (
         <div className="space-y-4">
-          {subs.map((s) => {
+          {filteredSubs.map((s) => {
             const p = profiles[s.influencer_id];
             return (
               <article key={s.id} className="rounded-2xl border bg-card p-6 shadow-sm">
@@ -149,6 +203,7 @@ function AdminHome() {
     </AppShell>
   );
 }
+
 
 function FileGrid({
   title, icon, files, onOpen, isVideo,

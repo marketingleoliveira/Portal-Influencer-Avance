@@ -27,43 +27,72 @@ type Sub = {
 };
 type Profile = { id: string; full_name: string | null; instagram_handle: string | null };
 
+type Influencer = { id: string; full_name: string | null; instagram_handle: string | null; email: string; created_at: string };
+
 function AdminHome() {
   const [subs, setSubs] = useState<Sub[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [influencers, setInfluencers] = useState<Influencer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const sign = useServerFn(signFileUrl);
+  const listInf = useServerFn(listInfluencers);
 
   const refresh = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("submissions")
-      .select("*, submission_files(*)")
-      .order("created_at", { ascending: false });
+    const [{ data }, infRes] = await Promise.all([
+      supabase.from("submissions").select("*, submission_files(*)").order("created_at", { ascending: false }),
+      listInf({}),
+    ]);
     const list = (data as Sub[]) ?? [];
     setSubs(list);
-    const ids = Array.from(new Set(list.map((s) => s.influencer_id)));
-    if (ids.length) {
-      const { data: p } = await supabase.from("profiles").select("*").in("id", ids);
-      const map: Record<string, Profile> = {};
+    const infs = (infRes.data as Influencer[]) ?? [];
+    setInfluencers(infs);
+    const map: Record<string, Profile> = {};
+    infs.forEach((i) => { map[i.id] = { id: i.id, full_name: i.full_name, instagram_handle: i.instagram_handle }; });
+    // also fetch profiles for submissions whose influencer might not be in list
+    const missing = Array.from(new Set(list.map((s) => s.influencer_id))).filter((id) => !map[id]);
+    if (missing.length) {
+      const { data: p } = await supabase.from("profiles").select("*").in("id", missing);
       (p as Profile[] ?? []).forEach((x) => { map[x.id] = x; });
-      setProfiles(map);
     }
+    setProfiles(map);
     setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
 
-  const open = async (path: string) => {
-    const r = await sign({ data: { path } });
-    if (r.url) window.open(r.url, "_blank");
-    else toast.error(r.error ?? "Erro");
-  };
+  const filteredInfluencers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return influencers;
+    return influencers.filter((i) =>
+      (i.full_name ?? "").toLowerCase().includes(q) ||
+      (i.instagram_handle ?? "").toLowerCase().includes(q) ||
+      i.email.toLowerCase().includes(q),
+    );
+  }, [influencers, search]);
 
-  const setStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("submissions").update({ status }).eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Atualizado"); refresh(); }
-  };
+  const submissionsCount = useMemo(() => {
+    const m: Record<string, number> = {};
+    subs.forEach((s) => { m[s.influencer_id] = (m[s.influencer_id] ?? 0) + 1; });
+    return m;
+  }, [subs]);
+
+  const filteredSubs = useMemo(() => {
+    if (selectedId) return subs.filter((s) => s.influencer_id === selectedId);
+    const q = search.trim().toLowerCase();
+    if (!q) return subs;
+    return subs.filter((s) => {
+      const p = profiles[s.influencer_id];
+      return (
+        (p?.full_name ?? "").toLowerCase().includes(q) ||
+        (p?.instagram_handle ?? "").toLowerCase().includes(q) ||
+        s.title.toLowerCase().includes(q)
+      );
+    });
+  }, [subs, profiles, search, selectedId]);
+
 
   return (
     <AppShell title="Painel Administrativo">

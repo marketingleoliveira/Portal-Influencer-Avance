@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { RequireRole } from "@/components/require-role";
 import { AppShell } from "@/components/app-shell";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
-import { signFileUrl } from "@/lib/admin.functions";
-import { Tag, Image as ImageIcon, Video, Users, Download, ExternalLink } from "lucide-react";
+import { signFileUrl, listInfluencers } from "@/lib/admin.functions";
+import { Tag, Image as ImageIcon, Video, Users, Download, ExternalLink, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/")({

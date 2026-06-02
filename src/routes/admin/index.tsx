@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { RequireRole } from "@/components/require-role";
 import { AppShell } from "@/components/app-shell";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
-import { signFileUrl } from "@/lib/admin.functions";
-import { Tag, Image as ImageIcon, Video, Users, Download, ExternalLink } from "lucide-react";
+import { signFileUrl, listInfluencers } from "@/lib/admin.functions";
+import { Tag, Image as ImageIcon, Video, Users, Download, ExternalLink, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/")({
@@ -26,32 +27,71 @@ type Sub = {
 };
 type Profile = { id: string; full_name: string | null; instagram_handle: string | null };
 
+type Influencer = { id: string; full_name: string | null; instagram_handle: string | null; email: string; created_at: string };
+
 function AdminHome() {
   const [subs, setSubs] = useState<Sub[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [influencers, setInfluencers] = useState<Influencer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const sign = useServerFn(signFileUrl);
+  const listInf = useServerFn(listInfluencers);
 
   const refresh = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("submissions")
-      .select("*, submission_files(*)")
-      .order("created_at", { ascending: false });
+    const [{ data }, infRes] = await Promise.all([
+      supabase.from("submissions").select("*, submission_files(*)").order("created_at", { ascending: false }),
+      listInf({}),
+    ]);
     const list = (data as Sub[]) ?? [];
     setSubs(list);
-    const ids = Array.from(new Set(list.map((s) => s.influencer_id)));
-    if (ids.length) {
-      const { data: p } = await supabase.from("profiles").select("*").in("id", ids);
-      const map: Record<string, Profile> = {};
+    const infs = (infRes.data as Influencer[]) ?? [];
+    setInfluencers(infs);
+    const map: Record<string, Profile> = {};
+    infs.forEach((i) => { map[i.id] = { id: i.id, full_name: i.full_name, instagram_handle: i.instagram_handle }; });
+    // also fetch profiles for submissions whose influencer might not be in list
+    const missing = Array.from(new Set(list.map((s) => s.influencer_id))).filter((id) => !map[id]);
+    if (missing.length) {
+      const { data: p } = await supabase.from("profiles").select("*").in("id", missing);
       (p as Profile[] ?? []).forEach((x) => { map[x.id] = x; });
-      setProfiles(map);
     }
+    setProfiles(map);
     setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
 
+  const filteredInfluencers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return influencers;
+    return influencers.filter((i) =>
+      (i.full_name ?? "").toLowerCase().includes(q) ||
+      (i.instagram_handle ?? "").toLowerCase().includes(q) ||
+      i.email.toLowerCase().includes(q),
+    );
+  }, [influencers, search]);
+
+  const submissionsCount = useMemo(() => {
+    const m: Record<string, number> = {};
+    subs.forEach((s) => { m[s.influencer_id] = (m[s.influencer_id] ?? 0) + 1; });
+    return m;
+  }, [subs]);
+
+  const filteredSubs = useMemo(() => {
+    if (selectedId) return subs.filter((s) => s.influencer_id === selectedId);
+    const q = search.trim().toLowerCase();
+    if (!q) return subs;
+    return subs.filter((s) => {
+      const p = profiles[s.influencer_id];
+      return (
+        (p?.full_name ?? "").toLowerCase().includes(q) ||
+        (p?.instagram_handle ?? "").toLowerCase().includes(q) ||
+        s.title.toLowerCase().includes(q)
+      );
+    });
+  }, [subs, profiles, search, selectedId]);
   const open = async (path: string) => {
     const r = await sign({ data: { path } });
     if (r.url) window.open(r.url, "_blank");
@@ -64,6 +104,8 @@ function AdminHome() {
     else { toast.success("Atualizado"); refresh(); }
   };
 
+  const selectedInf = selectedId ? influencers.find((i) => i.id === selectedId) : null;
+
   return (
     <AppShell title="Painel Administrativo">
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -71,18 +113,60 @@ function AdminHome() {
           <h1 className="text-2xl font-bold">Envios das influencers</h1>
           <p className="text-sm text-muted-foreground">Visualize, baixe e marque como publicado.</p>
         </div>
-        <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Influencers</Button></Link>
+        <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Gerenciar Influencers</Button></Link>
+      </div>
+
+      <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="relative mb-3">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Pesquisar por nome, @instagram ou e-mail..."
+            className="pl-9"
+          />
+        </div>
+        {loading ? (
+          <p className="px-1 py-2 text-sm text-muted-foreground">Carregando influencers...</p>
+        ) : filteredInfluencers.length === 0 ? (
+          <p className="px-1 py-2 text-sm text-muted-foreground">Nenhuma influencer encontrada.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {filteredInfluencers.map((i) => {
+              const active = selectedId === i.id;
+              const count = submissionsCount[i.id] ?? 0;
+              return (
+                <button
+                  key={i.id}
+                  type="button"
+                  onClick={() => setSelectedId(active ? null : i.id)}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/40"}`}
+                >
+                  <span className="font-medium">{i.full_name ?? i.email}</span>
+                  {i.instagram_handle && <span className={active ? "opacity-80" : "text-muted-foreground"}>@{i.instagram_handle}</span>}
+                  <Badge variant={active ? "secondary" : "outline"} className="ml-1">{count}</Badge>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {selectedInf && (
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+            <span>Mostrando envios de <strong>{selectedInf.full_name ?? selectedInf.email}</strong></span>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedId(null)}><X className="mr-1 h-3 w-3" /> Limpar</Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
-      ) : subs.length === 0 ? (
+      ) : filteredSubs.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
-          Nenhum envio ainda.
+          {subs.length === 0 ? "Nenhum envio ainda." : "Nenhum envio corresponde ao filtro."}
         </div>
       ) : (
         <div className="space-y-4">
-          {subs.map((s) => {
+          {filteredSubs.map((s) => {
             const p = profiles[s.influencer_id];
             return (
               <article key={s.id} className="rounded-2xl border bg-card p-6 shadow-sm">
@@ -119,6 +203,7 @@ function AdminHome() {
     </AppShell>
   );
 }
+
 
 function FileGrid({
   title, icon, files, onOpen, isVideo,

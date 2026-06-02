@@ -92,11 +92,6 @@ function AdminHome() {
       );
     });
   }, [subs, profiles, search, selectedId]);
-  const open = async (path: string) => {
-    const r = await sign({ data: { path } });
-    if (r.url) window.open(r.url, "_blank");
-    else toast.error(r.error ?? "Erro");
-  };
 
   const setStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("submissions").update({ status }).eq("id", id);

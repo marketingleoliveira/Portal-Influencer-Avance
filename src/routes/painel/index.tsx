@@ -39,13 +39,13 @@ function PainelHome() {
 
   return (
     <AppShell title="Meu Painel">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Seus conteúdos</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Seus conteúdos</h1>
           <p className="text-sm text-muted-foreground">Envie a etiqueta, fotos e vídeos das peças.</p>
         </div>
-        <Link to="/painel/novo">
-          <Button><Plus className="mr-2 h-4 w-4" /> Enviar Conteúdo</Button>
+        <Link to="/painel/novo" className="sm:w-auto">
+          <Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> Enviar Conteúdo</Button>
         </Link>
       </div>
 

@@ -210,12 +210,14 @@ function AdminHome() {
 
   return (
     <AppShell title="Painel Administrativo">
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Envios das influencers</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Envios das influencers</h1>
           <p className="text-sm text-muted-foreground">Selecione uma influencer para ver os envios.</p>
         </div>
-        <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Gerenciar Influencers</Button></Link>
+        <Link to="/admin/influencers" className="sm:w-auto">
+          <Button variant="outline" className="w-full sm:w-auto"><Users className="mr-2 h-4 w-4" /> Gerenciar Influencers</Button>
+        </Link>
       </div>
 
       <div className="mb-4 relative">
@@ -223,7 +225,7 @@ function AdminHome() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome, @instagram, telefone ou email..."
+          placeholder="Buscar por nome, @instagram ou email..."
           className="pl-9"
         />
       </div>

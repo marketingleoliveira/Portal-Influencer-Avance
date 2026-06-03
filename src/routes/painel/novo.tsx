@@ -199,7 +199,7 @@ function NovoEnvio() {
 }
 
 function FileSection({
-  title, icon, accept, files, onAdd, onRemove,
+  title, icon, accept, files, onAdd, onRemove, single, hint,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -207,15 +207,19 @@ function FileSection({
   files: { file: File; kind: Kind; i: number }[];
   onAdd: (l: FileList | null) => void;
   onRemove: (i: number) => void;
+  single?: boolean;
+  hint?: string;
 }) {
   return (
     <div className="rounded-lg border bg-background p-4">
       <div className="mb-1 flex items-center gap-2 text-sm font-semibold">{icon}{title}</div>
-      <p className="mb-3 text-xs text-muted-foreground">Você pode selecionar vários arquivos de uma vez.</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        {hint ?? "Você pode selecionar vários arquivos de uma vez."}
+      </p>
       <Input
         type="file"
         accept={accept}
-        multiple
+        multiple={!single}
         onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }}
       />
       {files.length > 0 && (

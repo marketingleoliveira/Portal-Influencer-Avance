@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useServerFn } from "@tanstack/react-start";
 import { signFileUrl, listInfluencers } from "@/lib/admin.functions";
 import {
-  Tag, Image as ImageIcon, Video, Users, Download, ExternalLink, Search, X, ChevronDown, ChevronUp, Link as LinkIcon,
+  Tag, Image as ImageIcon, Video, Users, Download, ExternalLink, Search, ChevronDown, ChevronUp, Link as LinkIcon, ArrowLeft, ChevronRight, User,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,7 +32,6 @@ type Sub = {
   contact_admin: string | null;
   submission_files: { id: string; file_path: string; file_type: string; mime_type: string | null }[];
 };
-type Profile = { id: string; full_name: string | null; instagram_handle: string | null };
 type Influencer = { id: string; full_name: string | null; instagram_handle: string | null; email: string; created_at: string };
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -41,7 +40,6 @@ const STATUSES = ["pendente", "publicado"];
 
 function AdminHome() {
   const [subs, setSubs] = useState<Sub[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [influencers, setInfluencers] = useState<Influencer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -59,18 +57,8 @@ function AdminHome() {
       supabase.from("submissions").select("*, submission_files(*)").order("created_at", { ascending: false }),
       listInf({}),
     ]);
-    const list = (data as Sub[]) ?? [];
-    setSubs(list);
-    const infs = (infRes.data as Influencer[]) ?? [];
-    setInfluencers(infs);
-    const map: Record<string, Profile> = {};
-    infs.forEach((i) => { map[i.id] = { id: i.id, full_name: i.full_name, instagram_handle: i.instagram_handle }; });
-    const missing = Array.from(new Set(list.map((s) => s.influencer_id))).filter((id) => !map[id]);
-    if (missing.length) {
-      const { data: p } = await supabase.from("profiles").select("id, full_name, instagram_handle").in("id", missing);
-      (p as Profile[] ?? []).forEach((x) => { map[x.id] = x; });
-    }
-    setProfiles(map);
+    setSubs((data as Sub[]) ?? []);
+    setInfluencers((infRes.data as Influencer[]) ?? []);
     setLoading(false);
   };
 
@@ -85,12 +73,6 @@ function AdminHome() {
       i.email.toLowerCase().includes(q),
     );
   }, [influencers, search]);
-
-  const submissionsCount = useMemo(() => {
-    const m: Record<string, number> = {};
-    subs.forEach((s) => { m[s.influencer_id] = (m[s.influencer_id] ?? 0) + 1; });
-    return m;
-  }, [subs]);
 
   const visibleSubs = useMemo(() => {
     if (!selectedId) return [];
@@ -109,158 +91,183 @@ function AdminHome() {
 
   const selectedInf = selectedId ? influencers.find((i) => i.id === selectedId) : null;
 
+  if (selectedInf) {
+    return (
+      <AppShell title="Envios da influencer">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setSelectedId(null)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" /> Voltar
+          </button>
+          <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Gerenciar Influencers</Button></Link>
+        </div>
+
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold">{selectedInf.full_name ?? selectedInf.email}</h1>
+          {selectedInf.instagram_handle && (
+            <p className="text-sm text-muted-foreground">@{selectedInf.instagram_handle}</p>
+          )}
+        </div>
+
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Mês</label>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os meses</SelectItem>
+                {MESES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Rede social</label>
+            <Select value={filterRede} onValueChange={setFilterRede}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {REDES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        ) : visibleSubs.length === 0 ? (
+          <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
+            Nenhum envio para os filtros selecionados.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleSubs.map((s) => {
+              const isOpen = !!expanded[s.id];
+              const fotos = s.submission_files.filter((f) => f.file_type === "foto").length;
+              const videos = s.submission_files.filter((f) => f.file_type === "video").length;
+              const etiquetas = s.submission_files.filter((f) => f.file_type === "etiqueta").length;
+              return (
+                <article key={s.id} className="rounded-2xl border bg-card shadow-sm">
+                  <header className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-base font-semibold">{s.reception_month ? `Recebimento - ${s.reception_month}` : s.title}</h2>
+                        {s.social_network && <Badge variant="outline">{s.social_network}</Badge>}
+                        <Badge variant={s.status === "publicado" ? "default" : "secondary"}>{s.status}</Badge>
+                      </div>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span>{fotos} foto(s) · {videos} vídeo(s) · {etiquetas} etiqueta(s)</span>
+                        {s.contact_admin && <span>Contato: {s.contact_admin}</span>}
+                        <span>{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
+                      </p>
+                      {s.post_link && (
+                        <a href={s.post_link} target="_blank" rel="noopener noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <LinkIcon className="h-3 w-3" /> {s.post_link}
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {s.status !== "publicado" ? (
+                        <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "publicado")}>Marcar publicado</Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "pendente")}>Reabrir</Button>
+                      )}
+                      <Button size="sm" onClick={() => setExpanded((e) => ({ ...e, [s.id]: !isOpen }))}>
+                        {isOpen ? <><ChevronUp className="mr-1 h-4 w-4" /> Ocultar</> : <><ChevronDown className="mr-1 h-4 w-4" /> Ver detalhes</>}
+                      </Button>
+                    </div>
+                  </header>
+
+                  {isOpen && (
+                    <div className="border-t p-4">
+                      {s.description && <p className="mb-3 whitespace-pre-line text-sm text-foreground">{s.description}</p>}
+                      <FileGrid title="Etiqueta" icon={<Tag className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "etiqueta")} sign={sign} />
+                      <FileGrid title="Fotos" icon={<ImageIcon className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "foto")} sign={sign} />
+                      <FileGrid title="Vídeos" icon={<Video className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "video")} sign={sign} isVideo />
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell title="Painel Administrativo">
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Envios das influencers</h1>
-          <p className="text-sm text-muted-foreground">Visualize, baixe e marque como publicado.</p>
+          <p className="text-sm text-muted-foreground">Selecione uma influencer para ver os envios.</p>
         </div>
         <Link to="/admin/influencers"><Button variant="outline"><Users className="mr-2 h-4 w-4" /> Gerenciar Influencers</Button></Link>
       </div>
 
-      <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm">
-        <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar influencer por nome, @instagram ou e-mail..."
-            className="pl-9"
-          />
-        </div>
-        {loading ? (
-          <p className="px-1 py-2 text-sm text-muted-foreground">Carregando influencers...</p>
-        ) : filteredInfluencers.length === 0 ? (
-          <p className="px-1 py-2 text-sm text-muted-foreground">Nenhuma influencer encontrada.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {filteredInfluencers.map((i) => {
-              const active = selectedId === i.id;
-              const count = submissionsCount[i.id] ?? 0;
-              return (
-                <button
-                  key={i.id}
-                  type="button"
-                  onClick={() => setSelectedId(active ? null : i.id)}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/40"}`}
-                >
-                  <span className="font-medium">{i.full_name ?? i.email}</span>
-                  {i.instagram_handle && <span className={active ? "opacity-80" : "text-muted-foreground"}>@{i.instagram_handle}</span>}
-                  <Badge variant={active ? "secondary" : "outline"} className="ml-1">{count}</Badge>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {selectedInf && (
-          <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
-            <span>Mostrando envios de <strong>{selectedInf.full_name ?? selectedInf.email}</strong></span>
-            <Button size="sm" variant="ghost" onClick={() => setSelectedId(null)}><X className="mr-1 h-3 w-3" /> Limpar</Button>
-          </div>
-        )}
+      <div className="mb-4 relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nome, @instagram, telefone ou email..."
+          className="pl-9"
+        />
       </div>
 
-      {!selectedId ? (
-        <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
-          Selecione uma influencer acima para ver os envios.
-        </div>
-      ) : (
-        <>
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Mês</label>
-              <Select value={filterMonth} onValueChange={setFilterMonth}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os meses</SelectItem>
-                  {MESES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Rede social</label>
-              <Select value={filterRede} onValueChange={setFilterRede}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {REDES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
-          ) : visibleSubs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
-              Nenhum envio para os filtros selecionados.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {visibleSubs.map((s) => {
-                const isOpen = !!expanded[s.id];
-                const fotos = s.submission_files.filter((f) => f.file_type === "foto").length;
-                const videos = s.submission_files.filter((f) => f.file_type === "video").length;
-                const etiquetas = s.submission_files.filter((f) => f.file_type === "etiqueta").length;
-                return (
-                  <article key={s.id} className="rounded-2xl border bg-card shadow-sm">
-                    <header className="flex flex-wrap items-center justify-between gap-3 p-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-base font-semibold">{s.reception_month ?? s.title}</h2>
-                          {s.social_network && <Badge variant="outline">{s.social_network}</Badge>}
-                          <Badge variant={s.status === "publicado" ? "default" : "secondary"}>{s.status}</Badge>
-                        </div>
-                        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <span>{fotos} foto(s) · {videos} vídeo(s) · {etiquetas} etiqueta(s)</span>
-                          {s.contact_admin && <span>Contato: {s.contact_admin}</span>}
-                          <span>{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
-                        </p>
-                        {s.post_link && (
-                          <a href={s.post_link} target="_blank" rel="noopener noreferrer"
-                            className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                            <LinkIcon className="h-3 w-3" /> {s.post_link}
-                          </a>
+      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+        {loading ? (
+          <p className="p-6 text-sm text-muted-foreground">Carregando...</p>
+        ) : filteredInfluencers.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">Nenhuma influencer encontrada.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3">Nome</th>
+                <th className="px-4 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInfluencers.map((i) => (
+                <tr key={i.id} className="border-b last:border-0 hover:bg-muted/40">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">{i.full_name ?? i.email}</div>
+                        {i.instagram_handle && (
+                          <div className="text-xs text-muted-foreground">@{i.instagram_handle}</div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {s.status !== "publicado" ? (
-                          <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "publicado")}>Marcar publicado</Button>
-                        ) : (
-                          <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "pendente")}>Reabrir</Button>
-                        )}
-                        <Button size="sm" onClick={() => setExpanded((e) => ({ ...e, [s.id]: !isOpen }))}>
-                          {isOpen ? <><ChevronUp className="mr-1 h-4 w-4" /> Ocultar</> : <><ChevronDown className="mr-1 h-4 w-4" /> Ver detalhes</>}
-                        </Button>
-                      </div>
-                    </header>
-
-                    {isOpen && (
-                      <div className="border-t p-4">
-                        {s.description && <p className="mb-3 whitespace-pre-line text-sm text-foreground">{s.description}</p>}
-                        <FileGrid title="Etiqueta" icon={<Tag className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "etiqueta")} sign={sign} />
-                        <FileGrid title="Fotos" icon={<ImageIcon className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "foto")} sign={sign} />
-                        <FileGrid title="Vídeos" icon={<Video className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "video")} sign={sign} isVideo />
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button size="sm" onClick={() => setSelectedId(i.id)}>
+                      Ver detalhes <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </AppShell>
   );
 }

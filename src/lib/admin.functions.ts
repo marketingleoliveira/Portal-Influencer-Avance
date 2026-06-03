@@ -8,7 +8,27 @@ const createUserSchema = z.object({
   password: z.string().min(8).max(128),
   fullName: z.string().min(1).max(120),
   instagramHandle: z.string().max(60).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
 });
+
+const updateInfluencerSchema = z.object({
+  userId: z.string().uuid(),
+  fullName: z.string().min(1).max(120).optional().nullable(),
+  instagramHandle: z.string().max(60).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
+  partnershipStartDate: z.string().max(20).optional().nullable(),
+  status: z.enum(["ativa", "inativa"]).optional(),
+  internalNotes: z.string().max(5000).optional().nullable(),
+});
+
+async function ensureAdmin(context: { supabase: any; userId: string }) {
+  const { data: roles } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId)
+    .eq("role", "admin");
+  return !!roles && roles.length > 0;
+}
 
 // Cria a primeira conta de admin somente se ainda nao existir nenhum admin.
 export const createInitialAdmin = createServerFn({ method: "POST" })
@@ -29,7 +49,6 @@ export const createInitialAdmin = createServerFn({ method: "POST" })
     });
     if (error || !created.user) return { error: error?.message ?? "Erro ao criar usuario" };
 
-    // Trigger ja criou perfil + role 'influencer'. Removemos a role de influencer e adicionamos admin.
     await supabaseAdmin.from("user_roles").delete().eq("user_id", created.user.id);
     const { error: rErr } = await supabaseAdmin
       .from("user_roles")
@@ -43,12 +62,7 @@ export const createInfluencer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => createUserSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "admin");
-    if (!roles || roles.length === 0) return { error: "Apenas administradores podem criar contas" };
+    if (!(await ensureAdmin(context))) return { error: "Apenas administradores podem criar contas" };
 
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
@@ -61,25 +75,50 @@ export const createInfluencer = createServerFn({ method: "POST" })
     });
     if (error || !created.user) return { error: error?.message ?? "Erro ao criar usuario" };
 
-    // Atualiza profile (caso instagram nao tenha vindo no metadata corretamente)
     await supabaseAdmin
       .from("profiles")
-      .update({ full_name: data.fullName, instagram_handle: data.instagramHandle ?? null })
+      .update({
+        full_name: data.fullName,
+        instagram_handle: data.instagramHandle ?? null,
+        phone: data.phone ?? null,
+      })
       .eq("id", created.user.id);
 
     return { error: null, userId: created.user.id };
+  });
+
+// Atualiza dados administrativos da influencer
+export const updateInfluencer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => updateInfluencerSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    if (!(await ensureAdmin(context))) return { error: "forbidden" };
+
+    const patch: {
+      full_name?: string | null;
+      instagram_handle?: string | null;
+      phone?: string | null;
+      partnership_start_date?: string | null;
+      status?: string;
+      internal_notes?: string | null;
+    } = {};
+    if (data.fullName !== undefined) patch.full_name = data.fullName;
+    if (data.instagramHandle !== undefined) patch.instagram_handle = data.instagramHandle;
+    if (data.phone !== undefined) patch.phone = data.phone;
+    if (data.partnershipStartDate !== undefined) patch.partnership_start_date = data.partnershipStartDate || null;
+    if (data.status !== undefined) patch.status = data.status;
+    if (data.internalNotes !== undefined) patch.internal_notes = data.internalNotes;
+
+    const { error } = await supabaseAdmin.from("profiles").update(patch).eq("id", data.userId);
+    if (error) return { error: error.message };
+    return { error: null };
   });
 
 // Lista influencers (admin)
 export const listInfluencers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "admin");
-    if (!roles || roles.length === 0) return { error: "forbidden", data: [] };
+    if (!(await ensureAdmin(context))) return { error: "forbidden", data: [] };
 
     const { data: infRoles } = await supabaseAdmin
       .from("user_roles")
@@ -90,10 +129,9 @@ export const listInfluencers = createServerFn({ method: "GET" })
 
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, instagram_handle, created_at")
+      .select("id, full_name, instagram_handle, phone, partnership_start_date, status, internal_notes, created_at")
       .in("id", ids);
 
-    // Buscar emails
     const enriched = await Promise.all(
       (profiles ?? []).map(async (p) => {
         const { data: u } = await supabaseAdmin.auth.admin.getUserById(p.id);
@@ -108,7 +146,6 @@ export const signFileUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ path: z.string().min(1).max(500) }).parse(d))
   .handler(async ({ data, context }) => {
-    // Verifica acesso: admin ou dono (path comeca com userId/)
     const { data: roles } = await context.supabase
       .from("user_roles")
       .select("role")

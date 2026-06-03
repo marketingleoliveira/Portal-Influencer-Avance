@@ -55,6 +55,11 @@ function NovoEnvio() {
     if (!linkPostagem.trim()) { toast.error("Informe o link da postagem."); return; }
     if (files.length === 0) { toast.error("Anexe pelo menos um arquivo."); return; }
 
+    if (files.filter((f) => f.kind === "etiqueta").length > 1) {
+      toast.error("A etiqueta deve ser enviada apenas uma vez.");
+      return;
+    }
+
     setBusy(true);
     try {
       const title = `Recebimento - ${mesRecebimento}`;
@@ -66,7 +71,15 @@ function NovoEnvio() {
 
       const { data: sub, error: sErr } = await supabase
         .from("submissions")
-        .insert({ influencer_id: user.id, title, description })
+        .insert({
+          influencer_id: user.id,
+          title,
+          description,
+          reception_month: mesRecebimento,
+          contact_admin: contato,
+          social_network: redeSocial,
+          post_link: linkPostagem.trim(),
+        })
         .select()
         .single();
       if (sErr || !sub) throw sErr ?? new Error("erro");
@@ -95,11 +108,11 @@ function NovoEnvio() {
   const grouped = (k: Kind) => files.map((f, i) => ({ ...f, i })).filter((f) => f.kind === k);
 
   return (
-    <AppShell title="Novo envio">
+    <AppShell title="Enviar Conteúdo">
       <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-6 rounded-2xl border bg-card p-6 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold">Novo envio</h1>
-          <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem e o conteúdo produzido com as peças.</p>
+          <h1 className="text-xl font-bold">Enviar Conteúdo</h1>
+          <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem (uma única vez) e o conteúdo produzido com as peças.</p>
         </div>
 
         <div>
@@ -149,8 +162,14 @@ function NovoEnvio() {
           title="Etiqueta da embalagem"
           icon={<Tag className="h-4 w-4" />}
           accept="image/*"
+          single
+          hint="Envie apenas uma imagem da etiqueta."
           files={grouped("etiqueta")}
-          onAdd={(l) => addFiles("etiqueta", l)}
+          onAdd={(l) => {
+            // Substitui qualquer etiqueta existente para garantir apenas uma
+            setFiles((p) => p.filter((f) => f.kind !== "etiqueta"));
+            addFiles("etiqueta", l);
+          }}
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
         />
         <FileSection
@@ -180,7 +199,7 @@ function NovoEnvio() {
 }
 
 function FileSection({
-  title, icon, accept, files, onAdd, onRemove,
+  title, icon, accept, files, onAdd, onRemove, single, hint,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -188,15 +207,19 @@ function FileSection({
   files: { file: File; kind: Kind; i: number }[];
   onAdd: (l: FileList | null) => void;
   onRemove: (i: number) => void;
+  single?: boolean;
+  hint?: string;
 }) {
   return (
     <div className="rounded-lg border bg-background p-4">
       <div className="mb-1 flex items-center gap-2 text-sm font-semibold">{icon}{title}</div>
-      <p className="mb-3 text-xs text-muted-foreground">Você pode selecionar vários arquivos de uma vez.</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        {hint ?? "Você pode selecionar vários arquivos de uma vez."}
+      </p>
       <Input
         type="file"
         accept={accept}
-        multiple
+        multiple={!single}
         onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }}
       />
       {files.length > 0 && (

@@ -6,9 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useServerFn } from "@tanstack/react-start";
 import { signFileUrl, listInfluencers } from "@/lib/admin.functions";
-import { Tag, Image as ImageIcon, Video, Users, Download, ExternalLink, Search, X } from "lucide-react";
+import {
+  Tag, Image as ImageIcon, Video, Users, Download, ExternalLink, Search, X, ChevronDown, ChevronUp, Link as LinkIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/")({
@@ -23,11 +26,18 @@ type Sub = {
   admin_notes: string | null;
   created_at: string;
   influencer_id: string;
+  reception_month: string | null;
+  social_network: string | null;
+  post_link: string | null;
+  contact_admin: string | null;
   submission_files: { id: string; file_path: string; file_type: string; mime_type: string | null }[];
 };
 type Profile = { id: string; full_name: string | null; instagram_handle: string | null };
-
 type Influencer = { id: string; full_name: string | null; instagram_handle: string | null; email: string; created_at: string };
+
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const REDES = ["Instagram", "TikTok"];
+const STATUSES = ["pendente", "publicado"];
 
 function AdminHome() {
   const [subs, setSubs] = useState<Sub[]>([]);
@@ -36,6 +46,10 @@ function AdminHome() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterRede, setFilterRede] = useState<string>("all");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const sign = useServerFn(signFileUrl);
   const listInf = useServerFn(listInfluencers);
 
@@ -51,10 +65,9 @@ function AdminHome() {
     setInfluencers(infs);
     const map: Record<string, Profile> = {};
     infs.forEach((i) => { map[i.id] = { id: i.id, full_name: i.full_name, instagram_handle: i.instagram_handle }; });
-    // also fetch profiles for submissions whose influencer might not be in list
     const missing = Array.from(new Set(list.map((s) => s.influencer_id))).filter((id) => !map[id]);
     if (missing.length) {
-      const { data: p } = await supabase.from("profiles").select("*").in("id", missing);
+      const { data: p } = await supabase.from("profiles").select("id, full_name, instagram_handle").in("id", missing);
       (p as Profile[] ?? []).forEach((x) => { map[x.id] = x; });
     }
     setProfiles(map);
@@ -79,19 +92,14 @@ function AdminHome() {
     return m;
   }, [subs]);
 
-  const filteredSubs = useMemo(() => {
-    if (selectedId) return subs.filter((s) => s.influencer_id === selectedId);
-    const q = search.trim().toLowerCase();
-    if (!q) return subs;
-    return subs.filter((s) => {
-      const p = profiles[s.influencer_id];
-      return (
-        (p?.full_name ?? "").toLowerCase().includes(q) ||
-        (p?.instagram_handle ?? "").toLowerCase().includes(q) ||
-        s.title.toLowerCase().includes(q)
-      );
-    });
-  }, [subs, profiles, search, selectedId]);
+  const visibleSubs = useMemo(() => {
+    if (!selectedId) return [];
+    return subs
+      .filter((s) => s.influencer_id === selectedId)
+      .filter((s) => filterMonth === "all" || s.reception_month === filterMonth)
+      .filter((s) => filterStatus === "all" || s.status === filterStatus)
+      .filter((s) => filterRede === "all" || s.social_network === filterRede);
+  }, [subs, selectedId, filterMonth, filterStatus, filterRede]);
 
   const setStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("submissions").update({ status }).eq("id", id);
@@ -117,7 +125,7 @@ function AdminHome() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar por nome, @instagram ou e-mail..."
+            placeholder="Pesquisar influencer por nome, @instagram ou e-mail..."
             className="pl-9"
           />
         </div>
@@ -157,47 +165,101 @@ function AdminHome() {
         <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
           Selecione uma influencer acima para ver os envios.
         </div>
-      ) : loading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      ) : filteredSubs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
-          Esta influencer ainda não enviou nada.
-        </div>
       ) : (
-        <div className="space-y-4">
-          {filteredSubs.map((s) => {
-            const p = profiles[s.influencer_id];
-            return (
-              <article key={s.id} className="rounded-2xl border bg-card p-6 shadow-sm">
-                <header className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">{s.title}</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {p?.full_name ?? "—"}
-                      {p?.instagram_handle ? <> · <span className="text-primary">@{p.instagram_handle}</span></> : null}
-                      {" · "}
-                      {new Date(s.created_at).toLocaleString("pt-BR")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={s.status === "publicado" ? "default" : "secondary"}>{s.status}</Badge>
-                    {s.status !== "publicado" ? (
-                      <Button size="sm" onClick={() => setStatus(s.id, "publicado")}>Marcar publicado</Button>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "pendente")}>Reabrir</Button>
+        <>
+          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Mês</label>
+              <Select value={filterMonth} onValueChange={setFilterMonth}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os meses</SelectItem>
+                  {MESES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Rede social</label>
+              <Select value={filterRede} onValueChange={setFilterRede}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {REDES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : visibleSubs.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-muted-foreground">
+              Nenhum envio para os filtros selecionados.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleSubs.map((s) => {
+                const isOpen = !!expanded[s.id];
+                const fotos = s.submission_files.filter((f) => f.file_type === "foto").length;
+                const videos = s.submission_files.filter((f) => f.file_type === "video").length;
+                const etiquetas = s.submission_files.filter((f) => f.file_type === "etiqueta").length;
+                return (
+                  <article key={s.id} className="rounded-2xl border bg-card shadow-sm">
+                    <header className="flex flex-wrap items-center justify-between gap-3 p-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-base font-semibold">{s.reception_month ?? s.title}</h2>
+                          {s.social_network && <Badge variant="outline">{s.social_network}</Badge>}
+                          <Badge variant={s.status === "publicado" ? "default" : "secondary"}>{s.status}</Badge>
+                        </div>
+                        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>{fotos} foto(s) · {videos} vídeo(s) · {etiquetas} etiqueta(s)</span>
+                          {s.contact_admin && <span>Contato: {s.contact_admin}</span>}
+                          <span>{new Date(s.created_at).toLocaleDateString("pt-BR")}</span>
+                        </p>
+                        {s.post_link && (
+                          <a href={s.post_link} target="_blank" rel="noopener noreferrer"
+                            className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                            <LinkIcon className="h-3 w-3" /> {s.post_link}
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {s.status !== "publicado" ? (
+                          <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "publicado")}>Marcar publicado</Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => setStatus(s.id, "pendente")}>Reabrir</Button>
+                        )}
+                        <Button size="sm" onClick={() => setExpanded((e) => ({ ...e, [s.id]: !isOpen }))}>
+                          {isOpen ? <><ChevronUp className="mr-1 h-4 w-4" /> Ocultar</> : <><ChevronDown className="mr-1 h-4 w-4" /> Ver detalhes</>}
+                        </Button>
+                      </div>
+                    </header>
+
+                    {isOpen && (
+                      <div className="border-t p-4">
+                        {s.description && <p className="mb-3 whitespace-pre-line text-sm text-foreground">{s.description}</p>}
+                        <FileGrid title="Etiqueta" icon={<Tag className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "etiqueta")} sign={sign} />
+                        <FileGrid title="Fotos" icon={<ImageIcon className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "foto")} sign={sign} />
+                        <FileGrid title="Vídeos" icon={<Video className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "video")} sign={sign} isVideo />
+                      </div>
                     )}
-                  </div>
-                </header>
-
-                {s.description && <p className="mt-3 text-sm text-foreground">{s.description}</p>}
-
-                <FileGrid title="Etiquetas" icon={<Tag className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "etiqueta")} sign={sign} />
-                <FileGrid title="Fotos" icon={<ImageIcon className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "foto")} sign={sign} />
-                <FileGrid title="Videos" icon={<Video className="h-4 w-4" />} files={s.submission_files.filter((f) => f.file_type === "video")} sign={sign} isVideo />
-              </article>
-            );
-          })}
-        </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </AppShell>
   );
@@ -236,7 +298,7 @@ function FileGrid({
 
   if (files.length === 0) return null;
   return (
-    <section className="mt-5">
+    <section className="mt-4">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">{icon}{title} ({files.length})</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {files.map((f) => {
@@ -276,4 +338,3 @@ function FileGrid({
     </section>
   );
 }
-

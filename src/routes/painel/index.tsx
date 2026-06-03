@@ -41,11 +41,11 @@ function PainelHome() {
     <AppShell title="Meu Painel">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Seus envios</h1>
-          <p className="text-sm text-muted-foreground">Envie etiquetas, fotos e videos das pecas.</p>
+          <h1 className="text-2xl font-bold">Seus conteúdos</h1>
+          <p className="text-sm text-muted-foreground">Envie a etiqueta, fotos e vídeos das peças.</p>
         </div>
         <Link to="/painel/novo">
-          <Button><Plus className="mr-2 h-4 w-4" /> Novo envio</Button>
+          <Button><Plus className="mr-2 h-4 w-4" /> Enviar Conteúdo</Button>
         </Link>
       </div>
 
@@ -53,8 +53,8 @@ function PainelHome() {
         <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : subs.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-card p-12 text-center">
-          <p className="text-muted-foreground">Voce ainda nao fez nenhum envio.</p>
-          <Link to="/painel/novo"><Button className="mt-4">Criar primeiro envio</Button></Link>
+          <p className="text-muted-foreground">Você ainda não enviou nenhum conteúdo.</p>
+          <Link to="/painel/novo"><Button className="mt-4">Enviar primeiro conteúdo</Button></Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

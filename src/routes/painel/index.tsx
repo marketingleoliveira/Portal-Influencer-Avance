@@ -41,11 +41,11 @@ function PainelHome() {
     <AppShell title="Meu Painel">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Seus envios</h1>
-          <p className="text-sm text-muted-foreground">Envie etiquetas, fotos e videos das pecas.</p>
+          <h1 className="text-2xl font-bold">Seus conteúdos</h1>
+          <p className="text-sm text-muted-foreground">Envie a etiqueta, fotos e vídeos das peças.</p>
         </div>
         <Link to="/painel/novo">
-          <Button><Plus className="mr-2 h-4 w-4" /> Novo envio</Button>
+          <Button><Plus className="mr-2 h-4 w-4" /> Enviar Conteúdo</Button>
         </Link>
       </div>
 

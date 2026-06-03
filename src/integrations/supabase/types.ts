@@ -20,18 +20,30 @@ export type Database = {
           full_name: string | null
           id: string
           instagram_handle: string | null
+          internal_notes: string | null
+          partnership_start_date: string | null
+          phone: string | null
+          status: string
         }
         Insert: {
           created_at?: string
           full_name?: string | null
           id: string
           instagram_handle?: string | null
+          internal_notes?: string | null
+          partnership_start_date?: string | null
+          phone?: string | null
+          status?: string
         }
         Update: {
           created_at?: string
           full_name?: string | null
           id?: string
           instagram_handle?: string | null
+          internal_notes?: string | null
+          partnership_start_date?: string | null
+          phone?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -73,30 +85,42 @@ export type Database = {
       submissions: {
         Row: {
           admin_notes: string | null
+          contact_admin: string | null
           created_at: string
           description: string | null
           id: string
           influencer_id: string
+          post_link: string | null
+          reception_month: string | null
+          social_network: string | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
           admin_notes?: string | null
+          contact_admin?: string | null
           created_at?: string
           description?: string | null
           id?: string
           influencer_id: string
+          post_link?: string | null
+          reception_month?: string | null
+          social_network?: string | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
           admin_notes?: string | null
+          contact_admin?: string | null
           created_at?: string
           description?: string | null
           id?: string
           influencer_id?: string
+          post_link?: string | null
+          reception_month?: string | null
+          social_network?: string | null
           status?: string
           title?: string
           updated_at?: string

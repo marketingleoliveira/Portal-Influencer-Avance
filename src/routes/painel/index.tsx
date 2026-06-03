@@ -53,8 +53,8 @@ function PainelHome() {
         <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : subs.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-card p-12 text-center">
-          <p className="text-muted-foreground">Voce ainda nao fez nenhum envio.</p>
-          <Link to="/painel/novo"><Button className="mt-4">Criar primeiro envio</Button></Link>
+          <p className="text-muted-foreground">Você ainda não enviou nenhum conteúdo.</p>
+          <Link to="/painel/novo"><Button className="mt-4">Enviar primeiro conteúdo</Button></Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

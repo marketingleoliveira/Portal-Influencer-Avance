@@ -109,9 +109,9 @@ function NovoEnvio() {
 
   return (
     <AppShell title="Enviar Conteúdo">
-      <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-6 rounded-2xl border bg-card p-6 shadow-sm">
+      <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-5 rounded-2xl border bg-card p-4 shadow-sm sm:space-y-6 sm:p-6">
         <div>
-          <h1 className="text-xl font-bold">Enviar Conteúdo</h1>
+          <h1 className="text-lg font-bold sm:text-xl">Enviar Conteúdo</h1>
           <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem (uma única vez) e o conteúdo produzido com as peças.</p>
         </div>
 
@@ -189,9 +189,9 @@ function NovoEnvio() {
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
         />
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => nav({ to: "/painel" })}>Cancelar</Button>
-          <Button type="submit" disabled={busy}>{busy ? "Enviando..." : "Enviar"}</Button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => nav({ to: "/painel" })}>Cancelar</Button>
+          <Button type="submit" className="w-full sm:w-auto" disabled={busy}>{busy ? "Enviando..." : "Enviar"}</Button>
         </div>
       </form>
     </AppShell>

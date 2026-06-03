@@ -94,7 +94,14 @@ export const updateInfluencer = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (!(await ensureAdmin(context))) return { error: "forbidden" };
 
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      full_name?: string | null;
+      instagram_handle?: string | null;
+      phone?: string | null;
+      partnership_start_date?: string | null;
+      status?: string;
+      internal_notes?: string | null;
+    } = {};
     if (data.fullName !== undefined) patch.full_name = data.fullName;
     if (data.instagramHandle !== undefined) patch.instagram_handle = data.instagramHandle;
     if (data.phone !== undefined) patch.phone = data.phone;

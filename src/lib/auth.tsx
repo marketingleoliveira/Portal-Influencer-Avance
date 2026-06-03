@@ -38,18 +38,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const applySession = (s: Session | null) => {
-      setLoading(true);
+    let initialized = false;
+    let lastUserId: string | undefined = undefined;
+
+    const applySession = (s: Session | null, opts: { initial?: boolean } = {}) => {
+      const nextId = s?.user?.id;
+      const userChanged = nextId !== lastUserId;
+      lastUserId = nextId;
       setSession(s);
       setUser(s?.user ?? null);
-      void loadRole(s?.user?.id).finally(() => setLoading(false));
+      // Only toggle global loading on initial load or when the actual user changes
+      // (sign-in / sign-out). Token refreshes after returning to the tab must NOT
+      // remount protected children — that would wipe in-progress forms on mobile
+      // when the OS suspends the tab during file/camera pickers.
+      if (opts.initial || userChanged) {
+        setLoading(true);
+        void loadRole(nextId).finally(() => setLoading(false));
+      }
     };
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      applySession(s);
+      applySession(s, { initial: !initialized });
+      initialized = true;
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      applySession(session);
+      applySession(session, { initial: !initialized });
+      initialized = true;
     });
     return () => sub.subscription.unsubscribe();
   }, []);

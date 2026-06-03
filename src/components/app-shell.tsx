@@ -37,7 +37,7 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       <footer className="border-t bg-card mt-auto">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
           <span className="text-xs text-muted-foreground uppercase tracking-wide">
             © Avance Modas
           </span>

@@ -189,9 +189,9 @@ function NovoEnvio() {
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
         />
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => nav({ to: "/painel" })}>Cancelar</Button>
-          <Button type="submit" disabled={busy}>{busy ? "Enviando..." : "Enviar"}</Button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => nav({ to: "/painel" })}>Cancelar</Button>
+          <Button type="submit" className="w-full sm:w-auto" disabled={busy}>{busy ? "Enviando..." : "Enviar"}</Button>
         </div>
       </form>
     </AppShell>

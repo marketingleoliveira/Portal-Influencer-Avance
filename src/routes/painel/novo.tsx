@@ -55,6 +55,11 @@ function NovoEnvio() {
     if (!linkPostagem.trim()) { toast.error("Informe o link da postagem."); return; }
     if (files.length === 0) { toast.error("Anexe pelo menos um arquivo."); return; }
 
+    if (files.filter((f) => f.kind === "etiqueta").length > 1) {
+      toast.error("A etiqueta deve ser enviada apenas uma vez.");
+      return;
+    }
+
     setBusy(true);
     try {
       const title = `Recebimento - ${mesRecebimento}`;
@@ -66,7 +71,15 @@ function NovoEnvio() {
 
       const { data: sub, error: sErr } = await supabase
         .from("submissions")
-        .insert({ influencer_id: user.id, title, description })
+        .insert({
+          influencer_id: user.id,
+          title,
+          description,
+          reception_month: mesRecebimento,
+          contact_admin: contato,
+          social_network: redeSocial,
+          post_link: linkPostagem.trim(),
+        })
         .select()
         .single();
       if (sErr || !sub) throw sErr ?? new Error("erro");

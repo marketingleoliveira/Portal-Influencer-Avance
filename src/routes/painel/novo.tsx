@@ -162,8 +162,14 @@ function NovoEnvio() {
           title="Etiqueta da embalagem"
           icon={<Tag className="h-4 w-4" />}
           accept="image/*"
+          single
+          hint="Envie apenas uma imagem da etiqueta."
           files={grouped("etiqueta")}
-          onAdd={(l) => addFiles("etiqueta", l)}
+          onAdd={(l) => {
+            // Substitui qualquer etiqueta existente para garantir apenas uma
+            setFiles((p) => p.filter((f) => f.kind !== "etiqueta"));
+            addFiles("etiqueta", l);
+          }}
           onRemove={(i) => setFiles((p) => p.filter((_, idx) => idx !== i))}
         />
         <FileSection

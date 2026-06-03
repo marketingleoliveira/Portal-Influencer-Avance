@@ -108,11 +108,11 @@ function NovoEnvio() {
   const grouped = (k: Kind) => files.map((f, i) => ({ ...f, i })).filter((f) => f.kind === k);
 
   return (
-    <AppShell title="Novo envio">
+    <AppShell title="Enviar Conteúdo">
       <form onSubmit={onSubmit} className="mx-auto max-w-2xl space-y-6 rounded-2xl border bg-card p-6 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold">Novo envio</h1>
-          <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem e o conteúdo produzido com as peças.</p>
+          <h1 className="text-xl font-bold">Enviar Conteúdo</h1>
+          <p className="text-sm text-muted-foreground">Inclua a etiqueta da embalagem (uma única vez) e o conteúdo produzido com as peças.</p>
         </div>
 
         <div>

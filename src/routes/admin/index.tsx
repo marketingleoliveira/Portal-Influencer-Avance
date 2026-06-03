@@ -261,7 +261,7 @@ function AdminHome() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button size="sm" onClick={() => setSelectedId(i.id)}>
-                      Ver detalhes <ChevronRight className="ml-1 h-4 w-4" />
+                      <span className="hidden sm:inline">Ver detalhes</span><span className="sm:hidden">Ver</span> <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   </td>
                 </tr>
